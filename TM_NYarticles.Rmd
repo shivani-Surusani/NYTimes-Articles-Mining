@@ -1,0 +1,109 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+```{r}
+inputFile<-"nytimes_news_articles.txt"
+con <-file(inputFile,open="r")
+data<-readLines(con=con,n=-1L,skipNul=TRUE)
+data<-data[1:50000]
+close(con)
+```
+
+```{r}
+counter=1
+articles_list<-c()
+check=1
+while(counter<length(data)+1){
+  if(strsplit(data[counter]," ")[[1]][1]=="URL:"){
+    counter=counter+1
+    article=""
+    while(counter<length(data)+1){
+      check=check+1
+      if(data[counter]==""){counter=counter+1}
+      else if(strsplit(data[counter]," ")[[1]][1]=="URL:"){
+        break
+      }
+      else{
+        article=paste(article,data[counter],sep=".")
+        counter=counter+1
+      }
+    }
+    articles_list<-append(articles_list,article)
+  }
+}
+```
+```{r}
+```
+```{r}
+library(tm)
+articles=Corpus(VectorSource(articles_list))
+```
+
+```{r}
+# Convert the text to lower case
+articles <- tm_map(articles, content_transformer(tolower))
+# Remove numbers
+articles <- tm_map(articles, removeNumbers)
+# Remove english common stopwords
+articles<- tm_map(articles, removeWords, stopwords('english'))
+# Remove punctuations
+articles <- tm_map(articles, removePunctuation)
+# Eliminate extra white spaces
+articles <- tm_map(articles, stripWhitespace)
+```
+
+```{r}
+# Text stemming (reduces words to their root form)
+library(SnowballC)
+articles <- tm_map(articles, stemDocument)
+```
+
+```{r}
+inputFile<-"stopwords.txt"
+con <-file(inputFile,open="r")
+data1<-readLines(con=con,n=-1L,skipNul=TRUE)
+close(con)
+```
+
+```{r}
+#uploading additional stopwords
+count=1
+stopwords<-c()
+while(count<length(data1)+1){
+  stopwords<-append(stopwords,data1[count])
+  count=count+2
+}
+print(stopwords)
+```
+
+```{r}
+# Removing additional stop words
+articles <- tm_map(articles, removeWords,stopwords)
+articles <- tm_map(articles, removeWords,c("?????","it??"))
+```
+
+```{r}
+dtm <- TermDocumentMatrix(articles)
+mat <- as.matrix(dtm)
+b <- sort(rowSums(mat),decreasing=TRUE)
+dframe <- data.frame(word = names(b),freq=b)
+dframe<-dframe[-c(1, 4),]
+dframe<-dframe[-c(38,71,89,109,159,247,256,328,348,391,418,487,550,573,607),]#Here Iam deleting two words which are not english
+print(dframe)
+```
+```{r}
+# Generating the WordCloud
+library(wordcloud)
+library(RColorBrewer)
+par(bg='grey30')
+png(file="WordCloud.png",width=1000,height=700, bg="grey30")
+wordcloud(dframe[0:220,]$word, dframe[0:220,]$freq, col=terrain.colors(length(dframe[0:220,]$word), alpha=0.9), random.order=FALSE, rot.per=0.3 )
+title(main ="Text Mining New York Times Articles", font.main = 1, col.main = "cornsilk3", cex.main = 1.5)
+dev.off()
+```
+
+```{r}
+
+```
+
